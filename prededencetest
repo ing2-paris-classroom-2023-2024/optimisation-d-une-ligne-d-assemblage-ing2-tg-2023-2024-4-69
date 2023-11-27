@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct VertexNode {
+    int vertexID;
+    struct VertexNode* nextVertex;
+} VertexNode;
+
+typedef struct AdjacencyList {
+    VertexNode* headVertex;
+} AdjacencyList;
+
+typedef struct PrecedenceGraph {
+    int totalVertices;
+    AdjacencyList* adjacencyListArray;
+} PrecedenceGraph;
+
+VertexNode* createVertexNode(int vertex) {
+    VertexNode* newNode = malloc(sizeof(VertexNode));
+    newNode->vertexID = vertex;
+    newNode->nextVertex = NULL;
+    return newNode;
+}
+
+PrecedenceGraph* createPrecedenceGraph(int totalVertices) {
+    PrecedenceGraph* graph = malloc(sizeof(PrecedenceGraph));
+    graph->totalVertices = totalVertices;
+
+    graph->adjacencyListArray = malloc(totalVertices * sizeof(AdjacencyList));
+
+    for (int i = 0; i < totalVertices; i++) {
+        graph->adjacencyListArray[i].headVertex = NULL;
+    }
+
+    return graph;
+}
+
+void addEdgeToGraph(PrecedenceGraph* graph, int startVertex, int endVertex) {
+    VertexNode* newNode = createVertexNode(endVertex);
+    newNode->nextVertex = graph->adjacencyListArray[startVertex].headVertex;
+    graph->adjacencyListArray[startVertex].headVertex = newNode;
+}
+
+void DFS(PrecedenceGraph* graph, int vertex, int visited[], int* visitStack, int* index) {
+    visited[vertex] = 1;
+    VertexNode* temp = graph->adjacencyListArray[vertex].headVertex;
+
+    while (temp) {
+        int connectedVertex = temp->vertexID;
+        if (!visited[connectedVertex]) {
+            DFS(graph, connectedVertex, visited, visitStack, index);
+        }
+        temp = temp->nextVertex;
+    }
+    visitStack[(*index)++] = vertex;
+}
+
+void performTopologicalSort(PrecedenceGraph* graph) {
+    int* visitStack = malloc(graph->totalVertices * sizeof(int));
+    int index = 0;
+    int* visited = calloc(graph->totalVertices, sizeof(int));
+
+    for (int i = 0; i < graph->totalVertices; i++) {
+        if (!visited[i]) {
+            DFS(graph, i, visited, visitStack, &index);
+        }
+    }
+
+    printf("Topological Sort Order: ");
+    for (int i = index - 1; i >= 0; i--) {
+        printf("%d ", visitStack[i]);
+    }
+    printf("\n");
+
+    free(visited);
+    free(visitStack);
+}
+
+int main() {
+    int totalVertices = 6; // Supposons un graphe avec 6 sommets
+    PrecedenceGraph* precedenceGraph = createPrecedenceGraph(totalVertices);
+
+    // Ajouter les arêtes en fonction du graphe de précédence
+    // Les sommets sont indexés à partir de 0
+    addEdgeToGraph(precedenceGraph, 5, 2);
+    addEdgeToGraph(precedenceGraph, 5, 0);
+    addEdgeToGraph(precedenceGraph, 4, 0);
+    addEdgeToGraph(precedenceGraph, 4, 1);
+    addEdgeToGraph(precedenceGraph, 2, 3);
+    addEdgeToGraph(precedenceGraph, 3, 1);
+
+    // Effectuer un tri topologique sur le graphe
+    performTopologicalSort(precedenceGraph);
+
+    // Nettoyage de la mémoire (à compléter avec la suppression de chaque liste d'adjacence)
+    free(precedenceGraph->adjacencyListArray);
+    free(precedenceGraph);
+
+    return 0;
+}
