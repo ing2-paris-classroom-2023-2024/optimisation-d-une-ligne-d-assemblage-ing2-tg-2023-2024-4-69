@@ -5,27 +5,27 @@
 #ifndef ECELECARTEST_HEADER_H
 #define ECELECARTEST_HEADER_H
 
-// Structures de données pour stocker les informations lues
-typedef struct {
-    int exclusions[100][2];
-    int exclusionCount;
-} Exclusions;
+#include <stdio.h>
+#include <stdlib.h>
 
-typedef struct {
-    int precedences[100][2];
-    int arcCount;
-} Precedences;
+#define MAX_OPERATIONS 100 // Modifier la taille maximum d'opérations si nécessaire
+#define MAX_COLORS 100 // Nombre maximal de couleurs
 
-typedef struct {
-    int operationNum[100];
-    float operationTemp[100];
-    int operationCount;
-} Operations;
+// Structure pour représenter une arête dans le graphe
+typedef struct Arc {
+    int src;
+    int dest;
+    struct Arc *next;
+} Arc;
 
+// Structure pour représenter le graphe
+typedef struct {
+    Arc *Arcs;
+} Graphe;
+
+void ajouterArete(Graphe *graphe, int src, int dest);
+int colorierStations(Graphe *graphe, int nbOperations);
 void fichier_exclusions();
-void fichier_precedences();
-void fichier_operations();
-void fichier_temps_cycle();
-void optimizeAssemblyLine();
+
 
 #endif //ECELECARTEST_HEADER_H
