@@ -1,0 +1,22 @@
+void DFS(Graphe* graphe, int sommet, bool* visite){
+    visite[sommet] = true;
+    printf("%d\n",sommet);
+    pArc arc = graphe->pSommet[sommet]->arc;
+    while (arc != NULL){
+        int adjacent = arc->sommet;
+        if(!visite[adjacent]){
+            DFS(graphe, adjacent, visite);
+        }
+        arc = arc->arc_suivant;
+    }
+}
+
+void DFSaffichage(Graphe* graphe, int sommet){
+    bool* visite = (bool*)malloc(graphe->ordre * sizeof(bool));
+    for(int i = 0; i<graphe->ordre; i++){
+        visite[i] = false;
+    }
+    printf("On commence le DFS au sommet : %d\n", sommet);
+    DFS(graphe, sommet, visite);
+    free(visite);
+}
