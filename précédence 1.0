@@ -1,0 +1,101 @@
+#include "graphe.h"
+
+pArc* creerArc(int sommet) {
+    pArc newArc = (pArc)malloc(sizeof(struct Arc));
+    newArc->sommet = sommet;
+    newArc->arc_suivant = NULL;
+    return newArc;
+}
+
+Graphe* creerGraphe(int ordre) {
+    Graphe* newGraphe = (Graphe*)malloc(sizeof(Graphe));
+    newGraphe->ordre = ordre;
+    newGraphe->pSommet = (pSommet*)malloc(ordre * sizeof(pSommet));
+    for (int i = 0; i < ordre; i++) {
+        newGraphe->pSommet[i] = (pSommet)malloc(sizeof(struct Sommet));
+        newGraphe->pSommet[i]->valeur = i;
+        newGraphe->pSommet[i]->arc = NULL;
+    }
+    return newGraphe;
+}
+
+
+void ajouterArc(Graphe* graphe, int src, int dest) {
+    pArc newArc = creerArc(dest);
+    newArc->arc_suivant = graphe->pSommet[src]->arc;
+    graphe->pSommet[src]->arc = newArc;
+}
+
+Graphe* lireGraphe(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    int src, dest;
+    int nbSommets = 0;
+    while (fscanf(file, "%d %d", &src, &dest) == 2) {
+        if (src > nbSommets){
+            nbSommets = src;
+        }
+        if (dest > nbSommets){
+            nbSommets = dest;
+        }
+    }
+    int ordre = nbSommets;
+
+    rewind(file); //on revient au debut du fichier
+
+    Graphe* graphe = creerGraphe(ordre);
+
+    while (fscanf(file, "%d %d", &src, &dest) == 2) {
+        ajouterArc(graphe, src, dest);
+    }
+
+    fclose(file);
+    return graphe;
+}
+
+void affichersuccesseurs(pSommet vertex) {
+    for (pArc arc = vertex->arc; arc != NULL; arc = arc->arc_suivant) {
+        printf("%d ", arc->sommet);
+    }
+}
+
+void affichergraphe(Graphe* graphe) {
+    printf("graphe\n");
+    printf("ordre = %d\n", graphe->ordre);
+
+    for (int i = 0; i < graphe->ordre; i++) {
+        printf("sommet %d: ", i);
+        affichersuccesseurs(graphe->pSommet[i]);
+        printf("\n");
+    }
+}
+
+void freeGraphe(Graphe* graphe) { //fonction pour libérer la mémoire
+    if (graphe == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < graphe->ordre; i++) {
+        pSommet sommet = graphe->pSommet[i];
+        while (sommet->arc != NULL) {
+            pArc tempArc = sommet->arc;
+            sommet->arc = sommet->arc->arc_suivant;
+            free(tempArc);
+        }
+        free(sommet);
+    }
+    free(graphe->pSommet);
+    free(graphe);
+}
+
+int main() {
+    const char* filename = "precedence.txt";
+    Graphe* graphe = lireGraphe(filename);
+    affichergraphe(graphe);
+    freeGraphe(graphe);
+    return 0;
+}
