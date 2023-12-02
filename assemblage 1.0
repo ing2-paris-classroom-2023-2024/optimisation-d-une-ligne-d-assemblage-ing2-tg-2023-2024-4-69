@@ -1,0 +1,476 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include "graphe.h"
+
+#include "header.h"
+
+// Fonction pour ajouter une arête au graphe
+void ajouterArete(Graphe *graphe, int src, int dest) {
+    Arc *newArc = (Arc *)malloc(sizeof(Arc));
+    newArc->src = src;
+    newArc->dest = dest;
+    newArc->next = graphe->Arcs;
+    graphe->Arcs = newArc;
+}
+
+int colorierStations(Graphe *graphe, int nbOperations) {
+    int degre[MAX_OPERATIONS]; // Tableau pour stocker les degrés des sommets
+    int couleurs[MAX_OPERATIONS]; // Tableau pour stocker les couleurs des opérations
+
+    for (int i = 0; i < nbOperations; ++i) {
+        degre[i] = 0;
+        couleurs[i] = -1; // Initialisation des couleurs à -1 (non attribuées)
+    }
+
+    // Calcul des degrés de chaque sommet
+    for (Arc *Arc = graphe->Arcs; Arc != NULL; Arc = Arc->next) {
+        degre[Arc->src]++;
+        degre[Arc->dest]++;
+    }
+
+    // Ordonner les sommets selon leur degré décroissant (tri par sélection)
+    for (int i = 0; i < nbOperations - 1; ++i) {
+        int maxdegre = -1;
+        int maxdegreS = -1;
+
+        for (int j = 0; j < nbOperations; ++j) {
+            if (degre[j] > maxdegre) {
+                maxdegre = degre[j];
+                maxdegreS = j;
+            }
+        }
+
+        // Mettre à jour le degré du sommet sélectionné pour ne pas le réutiliser
+        degre[maxdegreS] = -1;
+
+        // Coloration du sommet sélectionné
+        int cr = 0;
+        int couleursDispo[MAX_COLORS] = {0}; // Tableau pour marquer les couleurs disponibles
+
+        for (Arc *Arc = graphe->Arcs; Arc != NULL; Arc = Arc->next) {
+            if (Arc->src == maxdegreS || Arc->dest == maxdegreS) {
+                if (couleurs[Arc->src] != -1) {
+                    couleursDispo[couleurs[Arc->src]] = 1;
+                }
+                if (couleurs[Arc->dest] != -1) {
+                    couleursDispo[couleurs[Arc->dest]] = 1;
+                }
+            }
+        }
+
+        while (couleursDispo[cr] == 1) {
+            cr++;
+        }
+
+        couleurs[maxdegreS] = cr; // Attribution de la couleur disponible au sommet
+
+        // Mettre à jour les couleurs disponibles pour les voisins
+        for (Arc *Arc = graphe->Arcs; Arc != NULL; Arc = Arc->next) {
+            if (Arc->src == maxdegreS || Arc->dest == maxdegreS) {
+                if (couleurs[Arc->src] != -1) {
+                    couleursDispo[couleurs[Arc->src]] = 0;
+                }
+                if (couleurs[Arc->dest] != -1) {
+                    couleursDispo[couleurs[Arc->dest]] = 0;
+                }
+            }
+        }
+    }
+
+    // Trouver le nombre de couleurs utilisées (stations formées)
+    int nbStations = 0;
+    for (int i = 0; i < nbOperations; ++i) {
+        if (couleurs[i] > nbStations) {
+            nbStations = couleurs[i];
+        }
+    }
+
+    // Affichage des stations formées
+    printf("Stations formees :\n");
+    for (int i = 0; i <= nbStations; ++i) {
+        printf("Station %d : ", i + 1);
+        for (int j = 1; j < nbOperations; ++j) {
+            if (couleurs[j] == i) {
+                printf("%d ", j);
+            }
+        }
+        printf("\n");
+    }
+
+    return nbStations + 1; // Retourne le nombre de stations formées
+}
+
+void fichier_exclusions() {
+    FILE *fichier = fopen("exclusions.txt", "r");
+
+    if (fichier == NULL) {
+        perror("Erreur lors de l'ouverture du fichier");
+        exit(1);
+    }
+
+    Graphe graphe;
+    graphe.Arcs = NULL;
+
+    int src, dest;
+    int maxOperation = -1;
+
+    while (fscanf(fichier, "%d %d", &src, &dest) == 2) {
+        if (src > maxOperation) maxOperation = src;
+        if (dest > maxOperation) maxOperation = dest;
+        ajouterArete(&graphe, src, dest);
+    }
+    int nbOperations = maxOperation + 1;
+
+    fclose(fichier);
+
+    int nbStations = colorierStations(&graphe, nbOperations);
+    printf("Nombre de stations : %d\n", nbStations);
+
+    // Libérer la mémoire
+    Arc *tempArc = graphe.Arcs;
+    while (tempArc != NULL) {
+        Arc *nextArc = tempArc->next;
+        free(tempArc);
+        tempArc = nextArc;
+    }
+}
+
+int main() {
+    fichier_exclusions();
+    return 0;
+}
+
+
+//Contrainte de precedence et de temps
+
+// création d'un nouveau sommet
+p_s creationsommet(int numero) {
+    p_s sommet = (p_s)malloc(sizeof(struct sommets));
+    sommet->valeur = numero;
+    sommet->arc = NULL;
+    sommet->station = 0;
+    return sommet;
+}
+
+//ajout d'un arc au graphe
+void nouvelArc(p_s sommet, int suivant, int poids) {
+    parc nouvelArc = (parc)malloc(sizeof(struct arcs));
+    nouvelArc->sommet = suivant;
+    nouvelArc->poids = poids;
+    nouvelArc->arcSuivant = sommet->arc;
+    sommet->arc = nouvelArc;
+}
+
+//création du graphe
+graph* creationG(int ordre) {
+    graph* graphe = (graph*)malloc(sizeof(graph));
+    graphe->taille = 0;
+    graphe->ordre = ordre;
+    graphe->sommets = (p_s*)malloc(ordre * sizeof(p_s));
+    for (int i = 0; i < ordre; i++) {
+        graphe->sommets[i] = creationsommet(i+1);
+    }
+    return graphe;
+}
+
+//lecture du fichier
+void lectureF(graph* graphe, char* nomFichier) {
+    FILE* fichier = fopen(nomFichier, "r");
+    int source, destination;
+    if (fichier == NULL) {
+        printf("Erreur lors de l'ouverture du fichier\n");
+        return;
+    }
+    while (fscanf(fichier, "%d %d", &source, &destination) != EOF) {
+        nouvelArc(graphe->sommets[source-1], destination, 0);
+        graphe->taille++;
+    }
+    fclose(fichier);
+}
+
+/*void printGraph(graph* graphe) {
+    printf("Graph :\n");
+    for (int j=0; j<graphe->ordre; j++) {
+        parc curent = graphe->sommets[j]->arc;
+        printf("sommets %d:", graphe->sommets[j]->valeur);
+        while (curent != NULL) {
+            printf(" %d", curent->sommet);
+            curent = curent->arcSuivant;
+        }
+        printf("\n");
+    }
+}*/
+
+//déterminer l'ordre_g
+int ordre_g(char* nomFichier) {
+    FILE* fichier = fopen(nomFichier, "r");
+    int ordre = 0;
+    int source, destination;
+    if (fichier == NULL) {
+        printf("Erreur lors de l'ouverture du fichier\n");
+        return -1;
+    }
+    while (fscanf(fichier, "%d %d", &source, &destination) != EOF) {
+        if (source > ordre){
+            ordre = source;
+        }
+        if (destination > ordre) {
+            ordre = destination;
+        }
+    }
+    fclose(fichier);
+    return ordre;
+}
+
+
+// initialiser la précédence
+void initprecedence(pred tab[], int ordre) {
+    for (int i = 0; i < ordre; i++) {
+        tab[i].n_pred = 0;
+    }
+}
+
+// recherche des taches precedentes
+void rechercheprec(graph* graphe, pred tab[]) {
+    for (int i = 0; i < graphe->ordre; i++) {
+        parc arc = graphe->sommets[i]->arc;
+        while (arc != NULL) {
+            int ipred = arc->sommet - 1;
+            tab[ipred].pred[tab[ipred].n_pred++] = i;
+            arc = arc->arcSuivant;
+        }
+    }
+}
+
+//trouver des sommets isolés
+void S_isoles(graph* graphe, bool s_isoles[graphe->ordre]) {
+    for (int i = 0; i < graphe->ordre; i++) {
+        s_isoles[i] = true;
+    }
+    for (int i = 0; i < graphe->ordre; i++) {
+        parc arc = graphe->sommets[i]->arc;
+        while (arc != NULL) {
+            s_isoles[i] = false;
+            s_isoles[arc->sommet-1] = false;
+            arc = arc->arcSuivant;
+        }
+    }
+}
+
+
+
+//affichage
+void print_stations(graph* graphe, const float* tempOperation, int maxCycle) {
+    int numStations = 0; //compte le nombre de stations
+    float tempTotal = 0; //compte le temps total
+    printf("Récapitulatif des stations:\n");
+    for (int station = 1; station <= graphe->ordre; station++) {
+        float tempStation = 0;
+        bool stationUtilisee = false;
+
+        for (int i = 0; i < graphe->ordre; i++) {
+            if (graphe->sommets[i]->station == station) {
+                stationUtilisee = true;
+                tempStation += tempOperation[graphe->sommets[i]->valeur - 1];
+            }
+        }
+
+        if (stationUtilisee) {
+            numStations++;
+            printf("Station %d - Operations effectuées: ", station);//affichage des stations et operations qui s'y font
+            for (int i = 0; i < graphe->ordre; i++) {
+                if (graphe->sommets[i]->station == station) {
+                    printf("%d ", graphe->sommets[i]->valeur);
+                }
+            }
+            printf("- Temps total: %.2f secondes", tempStation);//affichage du temps passé sur une station
+            if (tempStation > maxCycle) {
+                printf(" (! dépasse le temps max de cycle: %.2f secondes)", maxCycle);//message si le temps depasse le temps de cycle maximum
+            }
+            printf("\n");
+            tempTotal += tempStation;
+        }
+    }
+
+    printf("Nombre total de stations utilisées: %d\n", numStations);
+    printf("Temps total pour toutes les stations: %.2f secondes\n", tempTotal);
+    //affichage du nombre final de stations et de la durée totale d'assemblage
+}
+
+// lecture du temps de cycle maximal
+int lectureCycle(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    int cycleTime;
+
+    if (file != NULL) {
+        if (fscanf(file, "%d", &cycleTime) != 1) {
+            printf("Erreur lors de la lecture du temps de cycle\n");//vérification du contenu du fichier
+            exit(EXIT_FAILURE);
+        }
+        fclose(file);
+    } else {
+        printf("Erreur lors de l'ouverture du fichier de temps de cycle\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return cycleTime;
+}
+
+//lecture des operations et leur durée
+void lectureOperation(const char* filename, float** operationTimes, int* numOperations) {
+    FILE* file = fopen(filename, "r");
+    int numOperation;
+    float duree;
+    float* temps = NULL;
+    int cpt = 0;
+    int taille = 0;
+
+    if (file != NULL) {
+        while (fscanf(file, "%d %f", &numOperation, &duree) == 2) {
+            if (numOperation > taille) {
+                taille = numOperation;
+                temps = realloc(temps, taille * sizeof(float));
+                if (!temps) {
+                    printf("Erreur d'allocation de mémoire\n");//gestion des erreurs d'allocation mémoire
+                    exit(EXIT_FAILURE);
+                }
+            }
+            temps[numOperation - 1] = duree;
+            if (numOperation > cpt) {
+                cpt = numOperation;
+            }
+        }
+        fclose(file);
+    } else {
+        printf("Erreur lors de l'ouverture du fichier des opérations\n");
+        exit(EXIT_FAILURE);
+    }
+
+    *operationTimes = temps;
+    *numOperations = cpt;
+}
+
+//on verifie si on peut ajouter une operation sans depasser le temps de cycle maximal
+bool nvOperationStation(graph* graphe, int numOperation, int numStation, int cycleTime, const float tempsOperation[]) {
+    float nvTemps = graphe->stationTimes[numStation] + tempsOperation[numOperation];
+    return nvTemps <= cycleTime;
+}
+
+// gestion des operations
+void classer_op(graph* graphe, pred tab[], int cycleTime, float tempOperation[]) {
+    int actuelle = 1; //debut a la premiere station
+    bool tache[graphe->ordre]; //ce tableau permet de verifier si l'operation a ete assignée a une station
+    for (int i = 0; i < graphe->ordre; i++) {
+        tache[i] = false; //aucune operation assignée au début, on initalise tout a "false"
+    }
+
+    //on commenece a assigner les operations sans predecesseurs
+    for (int i = 0; i < graphe->ordre; i++) {
+        if (tab[i].n_pred == 0) {
+            if (nvOperationStation(graphe, i, actuelle, cycleTime, tempOperation)) {
+                graphe->sommets[i]->station = actuelle;
+                graphe->stationTimes[actuelle] += tempOperation[i]; //actualisation du temps
+                tache[i] = true; //l'operation est assignée
+            }
+        }
+    }
+
+    //on assigne les autres operations
+    while (actuelle < graphe->ordre) {
+        bool changement = false; //on verifie si une operation a deja ete assignée
+        actuelle++;
+        for (int i = 0; i < graphe->ordre; i++) {
+            if (!tache[i]) {
+                bool precedentAssigne = true;
+                for (int j = 0; j < tab[i].n_pred; j++) {
+                    int predIndex = tab[i].pred[j];
+                    //on verifie que les operations precedentes soient deja assignées a une station
+                    if (graphe->sommets[predIndex]->station == 0 || graphe->sommets[predIndex]->station >= actuelle) {
+                        precedentAssigne = false; // Predecessor is not assigned properly
+                        break;
+                    }
+                }
+                if (precedentAssigne && nvOperationStation(graphe, i, actuelle, cycleTime, tempOperation)) {
+                    graphe->sommets[i]->station = actuelle; //on assigne l'operation à la station actuelle
+                    graphe->stationTimes[actuelle] += tempOperation[i]; //mise a jour du temps
+                    tache[i] = true;
+                    changement = true;
+                }
+            }
+        }
+        if (!changement) {
+            break;//si aucune operation a été assignée on arrete
+        }
+    }
+}
+
+void freeGraph(graph* graphe) {
+    if (graphe == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < graphe->ordre; i++) {
+        p_s sommet = graphe->sommets[i];
+        if (sommet != NULL) {
+            parc arc = sommet->arc;
+            while (arc != NULL) {
+                parc tempArc = arc;
+                arc = arc->arcSuivant;
+                free(tempArc);
+            }
+            free(sommet);
+        }
+    }
+
+    free(graphe->sommets);
+
+    free(graphe);
+}
+
+int main() {
+    char nomFichier[100];
+    char nomFichier2[100];
+    char cycleTimeFile[100];
+    printf("Nom du fichier de precedence: ");
+    scanf("%s", nomFichier);
+    printf("Nom du fichier des operations: ");
+    scanf("%s", nomFichier2);
+    printf("Nom du fichier de temps de cycle: ");
+    scanf("%s", cycleTimeFile);
+
+    int ordre = ordre_g(nomFichier);
+    if (ordre == -1){
+        return 1; }
+    ;
+
+    int cycleTime = lectureCycle(cycleTimeFile);
+    printf("Temps de cycle: %d\n", cycleTime);
+
+    graph* graphe = creationG(ordre);
+    lectureF(graphe, nomFichier);
+
+    pred Precedent[ordre];
+    initprecedence(Precedent, ordre);
+    rechercheprec(graphe, Precedent);
+    bool s_isoles[ordre];
+    S_isoles(graphe, s_isoles);
+
+    float* operationTimes = NULL;
+    int numOperations;
+    lectureOperation(nomFichier2, &operationTimes, &numOperations);
+
+    if (ordre != numOperations) {
+        fprintf(stderr, "Difference entre le nombre d'operations et le nombre de sommets\n");
+        exit(EXIT_FAILURE);
+    }
+    classer_op(graphe, Precedent, cycleTime, operationTimes);
+    print_stations(graphe, operationTimes, cycleTime);
+    freeGraph(graphe);
+    free(operationTimes);
+
+    return 0;
+}
+
+
+
