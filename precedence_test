@@ -1,0 +1,157 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+/* Structure d'un arc*/
+struct Arc
+{
+    int sommet; // numéro de sommet d'un arc adjacent au sommet initial
+    int valeur;
+    struct Arc* arc_suivant;
+};
+
+/* Alias de pointeur sur un Arc */
+typedef struct Arc* pArc;
+
+/* Structure d'un sommet*/
+struct Sommet
+{
+    struct Arc* arc;
+    int valeur;
+};
+
+/* Alias de pointeur sur un Sommet */
+typedef struct Sommet* pSommet;
+
+/* Alias d'un Graphe */
+typedef struct Graphe
+{
+    int taille;
+    int ordre;
+    pSommet* pSommet;
+} Graphe;
+
+pArc* creerArc(int sommet) {
+    pArc newArc = (pArc)malloc(sizeof(struct Arc));
+    newArc->sommet = sommet;
+    newArc->arc_suivant = NULL;
+    return newArc;
+}
+
+Graphe* creerGraphe(int ordre) {
+    Graphe* newGraphe = (Graphe*)malloc(sizeof(Graphe));
+    newGraphe->ordre = ordre;
+    newGraphe->pSommet = (pSommet*)malloc(ordre * sizeof(pSommet));
+    for (int i = 0; i < ordre; i++) {
+        newGraphe->pSommet[i] = (pSommet)malloc(sizeof(struct Sommet));
+        newGraphe->pSommet[i]->valeur = i;
+        newGraphe->pSommet[i]->arc = NULL;
+    }
+    return newGraphe;
+}
+
+
+void ajouterArc(Graphe* graphe, int src, int dest) {
+    pArc newArc = creerArc(dest);
+    newArc->arc_suivant = graphe->pSommet[src]->arc;
+    graphe->pSommet[src]->arc = newArc;
+}
+
+Graphe* lireGraphe(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    int src, dest;
+    int nbSommets = 0;
+    while (fscanf(file, "%d %d", &src, &dest) == 2) {
+        if (src > nbSommets){
+            nbSommets = src;
+        }
+        if (dest > nbSommets){
+            nbSommets = dest;
+        }
+    }
+    int ordre = nbSommets+1;
+
+    rewind(file); //on revient au debut du fichier
+
+    Graphe* graphe = creerGraphe(ordre);
+
+    while (fscanf(file, "%d %d", &src, &dest) == 2) {
+        ajouterArc(graphe, src, dest);
+    }
+
+    fclose(file);
+    return graphe;
+}
+
+void affichersuccesseurs(pSommet vertex) {
+    for (pArc arc = vertex->arc; arc != NULL; arc = arc->arc_suivant) {
+        printf("%d ", arc->sommet);
+    }
+}
+
+void affichergraphe(Graphe* graphe) {
+    printf("graphe\n");
+    printf("ordre = %d\n", graphe->ordre);
+
+    for (int i = 0; i < graphe->ordre; i++) {
+        printf("sommet %d: ", i);
+        affichersuccesseurs(graphe->pSommet[i]);
+        printf("\n");
+    }
+}
+
+void freeGraphe(Graphe* graphe) { //fonction pour libérer la mémoire
+    if (graphe == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < graphe->ordre; i++) {
+        pSommet sommet = graphe->pSommet[i];
+        while (sommet->arc != NULL) {
+            pArc tempArc = sommet->arc;
+            sommet->arc = sommet->arc->arc_suivant;
+            free(tempArc);
+        }
+        free(sommet);
+    }
+    free(graphe->pSommet);
+    free(graphe);
+}
+
+void DFS(Graphe* graphe, int sommet, bool* visite){
+    visite[sommet] = true;
+    printf("%d\n",sommet);
+    pArc arc = graphe->pSommet[sommet]->arc;
+    while (arc != NULL){
+        int adjacent = arc->sommet;
+        if(!visite[adjacent]){
+            DFS(graphe, adjacent, visite);
+        }
+        arc = arc->arc_suivant;
+    }
+}
+
+void DFSaffichage(Graphe* graphe, int sommet){
+    bool* visite = (bool*)malloc(graphe->ordre * sizeof(bool));
+    for(int i = 0; i<graphe->ordre; i++){
+        visite[i] = false;
+    }
+    printf("On commence le DFS au sommet : %d\n", sommet);
+    DFS(graphe, sommet, visite);
+    free(visite);
+}
+
+int main() {
+    const char* filename = "precedence.txt";
+    Graphe* graphe = lireGraphe(filename);
+    affichergraphe(graphe);
+    printf("DFS : ");
+    DFSaffichage(graphe,1);
+    freeGraphe(graphe);
+    return 0;
+}
